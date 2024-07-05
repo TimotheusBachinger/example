@@ -53,6 +53,16 @@ build:remote_windows_x64 --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
 build:remote_windows_x64 --extra_execution_platforms=//platform/windows_x64
 build:remote_windows_x64 --extra_toolchains=//platform/windows_x64:cc-toolchain
 
+build:wintimi --remote_executor=grpc://192.168.56.101:8080
+build:wintimi --google_default_credentials=false
+build:wintimi --remote_accept_cached=false
+
+build:wintimi --host_platform=//platform/windows_x64
+build:wintimi --platforms=//platform/windows_x64
+build:wintimi --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+build:wintimi --extra_execution_platforms=//platform/windows_x64
+build:wintimi --extra_toolchains=//platform/windows_x64:cc-toolchain
+
 # Options for private EngFlow clusters.
 # To use on your own cluster, change the URLs to your own endpoint.
 build:opal --config=engflow_common

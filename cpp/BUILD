@@ -1,4 +1,11 @@
 cc_binary(
+    name = "hello_world",
+    srcs = [
+    	"hello_world.cc",
+    ],
+)
+
+cc_binary(
     name = "cpp",
     srcs = ["main.cc"],
     deps = [":cpp_lib"],

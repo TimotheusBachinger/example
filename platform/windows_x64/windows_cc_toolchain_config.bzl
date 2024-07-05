@@ -799,6 +799,8 @@ def _impl(ctx):
                         ACTION_NAMES.cpp_module_compile,
                         ACTION_NAMES.cpp_header_parsing,
                     ],
+                    # This is actually *NOT* what we want, but atm I gave up finding the reason
+                    # why bazel does not like my include directories
                     flag_groups = [flag_group(flags = ["/showIncludes"])],
                 ),
             ],
