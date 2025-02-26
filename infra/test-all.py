@@ -5,6 +5,11 @@ import subprocess
 import sys
 
 def main():
+    # All targets that can run in any environment.
+    targets = [
+        "//...",
+    ]
+
     for key in ("ARCH", "OPAL_RPC_CREDENTIALS", "OS", "REMOTE_EXECUTION"):
         if not os.getenv(key):
             sys.stderr.write(f"{key} not set\n")
@@ -23,21 +28,9 @@ def main():
             "--config=opal_bes",
             "--config=opal_auth",
         ]
-
-    targets = [
-        "//cpp/...",
-        "//docker/...",
-        "//genrules/...",
-        "//go/...",
-        "//java/...",
-        "//kotlin/...",
-        "//scala/...",
-        "//typescript/...",
-        "//csharp/...",
-        "//perl/...",
-        "//python/...",
-        "//swift/...",
-    ]
+    # The //docker/sysbox/... targets should only run in linux + remote
+    if os.getenv("REMOTE_EXECUTION") == "true" and os.getenv("OS") == "linux":
+        targets += ["//docker/sysbox/dind_test:check_docker",]
     args = ["bazel", "test"] + flags + ["--"] + targets
 
     result = subprocess.run(args)

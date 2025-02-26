@@ -29,15 +29,6 @@ http_file(
     ],
 )
 
-http_archive(
-    name = "com_engflow_engflowapis",
-    sha256 = "8721f7a0ec52c5bc120119aac090eedd671ca3b708652f88b82b44bea2b6c278",
-    strip_prefix = "engflowapis-44fcd39598f223e8e5f6c7cbf2f73c870b2a6341",
-    urls = [
-        "https://github.com/EngFlow/engflowapis/archive/44fcd39598f223e8e5f6c7cbf2f73c870b2a6341.zip",
-    ],
-)
-
 # Abseil Python can be imported through pip_import, but it has native Bazel support too.
 # bzlmod: https://github.com/abseil/abseil-py/issues/263
 http_archive(
@@ -47,14 +38,27 @@ http_archive(
     url = "https://github.com/abseil/abseil-py/archive/refs/tags/v2.1.0.tar.gz",
 )
 
-bazel_dep(name = "bazel_skylib", version = "1.5.0")
-bazel_dep(name = "rules_cc", version = "0.0.9")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "engflowapis-java", version = "2025.01.17-13.50.20")
 bazel_dep(name = "platforms", version = "0.0.10")
 bazel_dep(
     name = "protobuf",
     version = "23.1",
     repo_name = "com_google_protobuf",
 )
+
+# Per the instructions from:
+# https://github.com/bazelbuild/apple_support?tab=readme-ov-file#bazel-7-setup
+#
+# If you also depend on `rules_cc`, `apple_support` must come _above_ `rules_cc`
+# in your `MODULE.bazel` or `WORKSPACE` file because Bazel selects toolchains
+# based on which is registered first.
+bazel_dep(
+    name = "apple_support",
+    version = "1.15.1",
+    repo_name = "build_bazel_apple_support",
+)
+bazel_dep(name = "rules_cc", version = "0.0.9")
 
 # https://github.com/googleapis/googleapis/pull/855
 # https://github.com/bazelbuild/bazel-central-registry/pull/1699
@@ -64,25 +68,26 @@ bazel_dep(
     repo_name = "com_google_googleapis",
 )
 
-bazel_dep(name = "rules_python", version = "0.31.0")
+bazel_dep(name = "rules_python", version = "1.0.0")
+
+PYTHON_VERSION = "3.12"
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    is_default = True,
+    python_version = PYTHON_VERSION,
+)
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 
 pip.parse(
     hub_name = "pip",
-    python_version = "3.11",
+    python_version = PYTHON_VERSION,
     requirements_lock = "//python:requirements_lock.txt",
 )
 
 use_repo(pip, "pip")
 
-bazel_dep(name = "rules_proto", version = "6.0.0-rc2")
-
-bazel_dep(
-    name = "apple_support",
-    version = "1.15.1",
-    repo_name = "build_bazel_apple_support",
-)
+bazel_dep(name = "rules_proto", version = "6.0.2")
 
 bazel_dep(name = "rules_dotnet", version = "0.15.1")
 
@@ -93,10 +98,10 @@ use_repo(dotnet, "dotnet_toolchains")
 register_toolchains("@dotnet_toolchains//:all")
 
 # https://github.com/bazelbuild/rules_go/blob/master/docs/go/core/bzlmod.md
-bazel_dep(name = "rules_go", version = "0.47.1")
-bazel_dep(name = "gazelle", version = "0.36.0")
+bazel_dep(name = "rules_go", version = "0.48.1")
+bazel_dep(name = "gazelle", version = "0.37.0")
 
-GO_VERSION = "1.22.3"
+GO_VERSION = "1.22.5"
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = GO_VERSION)
@@ -106,10 +111,10 @@ go_deps.from_file(go_mod = "//:go.mod")
 
 use_repo(go_deps, "com_github_google_go_cmp")
 
-bazel_dep(name = "rules_java", version = "7.5.0")
+bazel_dep(name = "rules_java", version = "7.9.1")
 
 # https://github.com/bazelbuild/rules_jvm_external/blob/master/docs/bzlmod.md
-bazel_dep(name = "rules_jvm_external", version = "6.1")
+bazel_dep(name = "rules_jvm_external", version = "6.2")
 bazel_dep(
     name = "grpc-java",
     version = "1.64.0",
@@ -122,10 +127,15 @@ bazel_dep(name = "rules_proto_grpc", version = "5.0.0-alpha2")
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     artifacts = [
-        "commons-cli:commons-cli:1.5.0",
-        "com.google.oauth-client:google-oauth-client:1.34.1",
-        "io.netty:netty-handler:4.1.100.Final",
+        "commons-cli:commons-cli:1.8.0",
+        "com.google.oauth-client:google-oauth-client:1.36.0",
+        "io.netty:netty-handler:4.1.111.Final",
     ],
+
+    # When updating versions, run `REPIN=1 bazel run @maven//:pin`
+    fail_if_repin_required = True,
+    lock_file = "//:maven_install.json",
+
     strict_visibility = True,
     repositories = [
         "https://repo.maven.apache.org/maven2/",
@@ -133,7 +143,7 @@ maven.install(
 )
 use_repo(maven, "maven")
 
-bazel_dep(name = "rules_kotlin", version = "1.9.5")
+bazel_dep(name = "rules_kotlin", version = "1.9.6")
 bazel_dep(name = "rules_perl", version = "0.2.0")
 
 bazel_dep(
@@ -142,7 +152,7 @@ bazel_dep(
     repo_name = "build_bazel_rules_swift"
 )
 
-bazel_dep(name = "aspect_rules_ts", version = "2.2.0")
+bazel_dep(name = "aspect_rules_ts", version = "2.4.2")
 
 rules_ts_ext = use_extension(
     "@aspect_rules_ts//ts:extensions.bzl",
@@ -185,11 +195,12 @@ use_repo(rules_ts_ext, "npm_typescript")
 #
 # - MODULE.bazel loads the rules_scala archive as @io_bazel_rules_scala.
 #
-# - The //scala:config.bzl extension defines @io_bazel_rules_scala_config, which
-#   depends on @io_bazel_rules_scala.
+# - The //scala/extensions:config.bzl extension defines
+#   @io_bazel_rules_scala_config, which depends on @io_bazel_rules_scala.
 #
-# - The //scala:deps.bzl extension defines the repos needed by the Scala rules,
-#   which depend on @io_bazel_rules_scala and @io_bazel_rules_scala_config.
+# - The //scala/extensions:deps.bzl extension defines the repos needed by the
+#   Scala rules, which depend on @io_bazel_rules_scala and
+#   @io_bazel_rules_scala_config.
 #
 # The following problems occur when trying to import everything directly in
 # MODULE.bazel, or in fewer extension files.
@@ -248,22 +259,28 @@ use_repo(rules_ts_ext, "npm_typescript")
 
 http_archive(
     name = "io_bazel_rules_scala",
-    sha256 = "9a23058a36183a556a9ba7229b4f204d3e68c8c6eb7b28260521016b38ef4e00",
-    strip_prefix = "rules_scala-6.4.0",
-    url = "https://github.com/bazelbuild/rules_scala/releases/download/v6.4.0/rules_scala-v6.4.0.tar.gz",
-    patches = ["//scala:rules_scala-6.4.0.patch"],
+    sha256 = "e734eef95cf26c0171566bdc24d83bd82bdaf8ca7873bec6ce9b0d524bdaf05d",
+    strip_prefix = "rules_scala-6.6.0",
+    url = "https://github.com/bazelbuild/rules_scala/releases/download/v6.6.0/rules_scala-v6.6.0.tar.gz",
+    patches = ["//scala:rules_scala-6.6.0.patch"],
     patch_args = ["-p1"],
 )
 
-scala_config = use_extension("//scala:config.bzl", "scala_config")
+# This constant matches the default Scala version from rules_scala for now.
+SCALA_VERSION = "2.13.12"
+SCALA_VERSIONS = [SCALA_VERSION]
+
+scala_config = use_extension("//scala/extensions:config.bzl", "scala_config")
+scala_config.settings(
+    scala_version = SCALA_VERSION,
+    scala_versions = SCALA_VERSIONS,
+)
 use_repo(
     scala_config,
     "io_bazel_rules_scala_config",
 )
 
-scala_deps = use_extension("//scala:deps.bzl", "scala_deps")
-use_repo(
-    scala_deps,
+repos = [
     "io_bazel_rules_scala_scala_compiler",
     "io_bazel_rules_scala_scala_library",
     "io_bazel_rules_scala_scala_parser_combinators",
@@ -281,11 +298,20 @@ use_repo(
     "io_bazel_rules_scala_scalatest_matchers_core",
     "io_bazel_rules_scala_scalatest_mustmatchers",
     "io_bazel_rules_scala_scalatest_shouldmatchers",
-)
+]
 
-# Extracted from scala_register_toolchains() and scalatest_toolchain(), since
-# other bazel rules modules suggest similar usage.
-register_toolchains(
-    "@io_bazel_rules_scala//scala:default_toolchain",
-    "@io_bazel_rules_scala//testing:scalatest_toolchain"
-)
+toolchains = [
+    "@io_bazel_rules_scala//scala:toolchain",
+    "@io_bazel_rules_scala//testing:scalatest_toolchain",
+]
+
+scala_deps = use_extension("//scala/extensions:deps.bzl", "scala_deps")
+[
+    (
+        [use_repo(scala_deps, repo + suffix) for repo in repos],
+        [register_toolchains(toolchain + suffix) for toolchain in toolchains],
+    )
+    # The v.replace() expression mimics the logic to generate version specific
+    # repo suffixes from rules_scala.
+    for suffix in ["_" + v.replace(".", "_") for v in SCALA_VERSIONS]
+]

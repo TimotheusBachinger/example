@@ -34,36 +34,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: linux
-            arch: x64
-            os_distribution: debian
-            os_version: 11
-            revision: d04e89854b3931f4aaced77aa3a2fcad5834b3a6
-            remote_execution: 'false'
-
-          - os: linux
-            arch: x64
-            os_distribution: debian
-            os_version: 11
-            revision: d04e89854b3931f4aaced77aa3a2fcad5834b3a6
-            remote_execution: 'true'
-
           - os: macos
-            arch: x64
-            os_distribution: monterey
-            os_version: "12"
-            revision: d04e89854b3931f4aaced77aa3a2fcad5834b3a6
+            arch: arm64
+            os_distribution: sonoma
+            os_version: "14"
+            revision: dd17e52a1f04529abb97003e8093d356739980d7
             remote_execution: 'false'
 
           - os: macos
-            arch: x64
-            os_distribution: monterey
-            os_version: "12"
-            revision: d04e89854b3931f4aaced77aa3a2fcad5834b3a6
+            arch: arm64
+            os_distribution: sonoma
+            os_version: "14"
+            revision: dd17e52a1f04529abb97003e8093d356739980d7
             remote_execution: 'true'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up authentication
         shell: bash
@@ -79,3 +65,66 @@ jobs:
           OS: ${{ matrix.os }}
           REMOTE_EXECUTION: ${{ matrix.remote_execution }}
         run: python3 infra/test-all.py
+
+  ci-runners-test-matrix:
+    runs-on:
+      - self-hosted
+      - "os=linux"
+      - "arch=x64"
+      - "remote_execution=${{ matrix.remote_execution }}"
+      - "engflow-container-image=docker://645088952840.dkr.ecr.eu-west-1.amazonaws.com/engflow-ci/debian11-dind-x64@sha256:a0f386162b6498b9220a33f33f158fd175d2873ddd6ed30ca67aa33915850e1e"
+      - "engflow-pool=ci_sysbox_x64"
+      - "engflow-runtime=sysbox-runc"
+      - "engflow-runner-id=${{ github.repository_id }}_ci-runners-test-matrix_${{ github.run_id }}_${{ github.run_number }}_${{ github.run_attempt }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - remote_execution: 'false'
+
+          - remote_execution: 'true'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up authentication
+        shell: bash
+        run: cp infra/bazelrc .bazelrc.user
+
+      - name: Generate python requirements lock
+        shell: bash
+        run: bazel run //python:requirements.update
+
+      - name: Build and test
+        env:
+          ARCH: x64
+          OS: linux
+          REMOTE_EXECUTION: ${{ matrix.remote_execution }}
+        run: python3 infra/test-all.py
+
+  buck2-test:
+    runs-on:
+      - self-hosted
+      - "os=linux"
+      - "arch=x64"
+      - "engflow-container-image=docker://645088952840.dkr.ecr.eu-west-1.amazonaws.com/engflow-ci/debian11-dind-x64@sha256:a0f386162b6498b9220a33f33f158fd175d2873ddd6ed30ca67aa33915850e1e"
+      - "engflow-pool=ci_sysbox_x64"
+      - "engflow-runtime=sysbox-runc"
+      - "engflow-runner-id=${{ github.repository_id }}_buck2-test_${{ github.run_id }}_${{ github.run_number }}_${{ github.run_attempt }}"
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buck2 binary
+        shell: bash
+        run: infra/setup-buck2.sh
+
+      - name: Set up authentication
+        shell: bash
+        run: infra/auth-buck2.sh
+
+      - name: Build and test
+        shell: bash
+        run: infra/test-buck2.sh
